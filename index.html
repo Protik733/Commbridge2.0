@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Communication Bridge</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js"></script>
+
+<style>
+:root{
+--bg-gradient:linear-gradient(-45deg,#0f2027,#203a43,#2c5364,#000);
+--glass:rgba(255,255,255,0.08);
+--border:rgba(255,255,255,0.15);
+--accent:#00f5ff;
+--accent2:#7b61ff;
+--text:#ffffff;
+--card:rgba(255,255,255,0.08);
+}
+
+body.light{
+--bg-gradient:linear-gradient(-45deg,#f0f2f5,#e0e7ff,#ffffff,#dbeafe);
+--glass:rgba(255,255,255,0.6);
+--border:rgba(0,0,0,0.08);
+--accent:#2563eb;
+--accent2:#7c3aed;
+--text:#111827;
+--card:rgba(255,255,255,0.7);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+font-family:'Outfit',sans-serif;
+color:var(--text);
+background:var(--bg-gradient);
+background-size:400% 400%;
+animation:bgMove 15s ease infinite;
+height:100vh;
+overflow:hidden;
+transition:0.4s;
+}
+
+@keyframes bgMove{
+0%{background-position:0% 50%;}
+50%{background-position:100% 50%;}
+100%{background-position:0% 50%;}
+}
+
+header{
+height:70px;
+min-height:70px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:0 40px;
+background:var(--glass);
+backdrop-filter:blur(20px);
+border-bottom:1px solid var(--border);
+transition:0.4s;
+flex-wrap:nowrap;
+}
+
+.logo{
+font-weight:800;
+font-size:22px;
+}
+
+.logo span{
+color:var(--accent);
+}
+
+.header-right{
+display:flex;
+align-items:center;
+gap:15px;
+}
+
+#statusText{
+font-size:13px;
+padding:6px 14px;
+border-radius:20px;
+background:rgba(0,255,255,0.15);
+color:var(--accent);
+animation:pulse 2s infinite;
+}
+
+@keyframes pulse{
+0%{box-shadow:0 0 5px var(--accent);}
+50%{box-shadow:0 0 20px var(--accent);}
+100%{box-shadow:0 0 5px var(--accent);}
+}
+
+.theme-toggle{
+cursor:pointer;
+padding:8px 14px;
+border-radius:20px;
+border:1px solid var(--border);
+background:var(--card);
+transition:0.3s;
+}
+
+.theme-toggle:hover{
+transform:scale(1.1);
+}
+
+/* Language switcher */
+.lang-switcher{
+display:flex;
+gap:4px;
+background:rgba(255,255,255,0.06);
+border:1px solid var(--border);
+border-radius:20px;
+padding:4px;
+}
+
+.lang-btn{
+font-size:11px;
+font-family:'Outfit',sans-serif;
+font-weight:600;
+padding:5px 12px;
+border-radius:16px;
+border:none;
+background:transparent;
+color:rgba(255,255,255,0.45);
+cursor:pointer;
+transition:all 0.2s;
+}
+
+body.light .lang-btn{
+color:rgba(0,0,0,0.4);
+}
+
+.lang-btn.active{
+background:var(--accent);
+color:#000;
+font-weight:700;
+}
+
+.lang-btn:hover:not(.active){
+color:var(--text);
+background:rgba(255,255,255,0.1);
+}
+
+.app{
+display:grid;
+grid-template-columns:460px 380px;
+height:calc(100vh - 70px);
+justify-content:center;
+gap:0;
+}
+
+.camera-zone{
+position:relative;
+background:black;
+}
+
+video,canvas{
+position:absolute;
+inset:0;
+width:100%;
+height:100%;
+object-fit:cover;
+transform:scaleX(-1);
+}
+
+.start-screen{
+position:absolute;
+inset:0;
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+background:rgba(0,0,0,0.85);
+backdrop-filter:blur(12px);
+text-align:center;
+color:white;
+}
+
+.start-screen h2{
+font-size:36px;
+margin-bottom:15px;
+}
+
+.start-screen p{
+color:#ccc;
+margin-bottom:30px;
+}
+
+button{
+padding:12px 28px;
+border:none;
+border-radius:30px;
+cursor:pointer;
+font-weight:600;
+background:linear-gradient(135deg,var(--accent),var(--accent2));
+color:white;
+transition:0.3s;
+}
+
+button:hover{
+transform:translateY(-3px);
+box-shadow:0 0 20px var(--accent);
+}
+
+.sidebar{
+background:var(--glass);
+backdrop-filter:blur(25px);
+border-left:1px solid var(--border);
+display:flex;
+flex-direction:column;
+transition:0.4s;
+}
+
+.section-title{
+padding:18px 25px 5px;
+font-size:14px;
+letter-spacing:1px;
+color:var(--accent);
+}
+
+.history-list{
+padding:10px 25px;
+height:150px;
+overflow:auto;
+font-size:14px;
+}
+
+.history-list div{
+background:var(--card);
+margin-bottom:8px;
+padding:8px 12px;
+border-radius:10px;
+animation:fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn{
+from{opacity:0;transform:translateY(10px);}
+to{opacity:1;transform:translateY(0);}
+}
+
+.gesture-grid{
+flex:1;
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:15px;
+padding:20px;
+overflow:auto;
+}
+
+.gesture-tile{
+background:var(--card);
+padding:18px;
+border-radius:16px;
+text-align:center;
+transition:0.3s;
+cursor:pointer;
+}
+
+.gesture-tile:hover{
+transform:translateY(-5px);
+box-shadow:0 0 20px rgba(0,255,255,0.4);
+}
+
+.controls{
+padding:20px;
+border-top:1px solid var(--border);
+display:flex;
+justify-content:space-between;
+gap:10px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<div class="logo">comm<span>bridge</span></div>
+<div class="header-right">
+
+  <!-- Language Switcher -->
+  <div class="lang-switcher" id="langSwitcher">
+    <button class="lang-btn active" data-lang="en">EN</button>
+    <button class="lang-btn" data-lang="bn">বাংলা</button>
+    <button class="lang-btn" data-lang="hi">हिंदी</button>
+  </div>
+
+  <div id="statusText">READY</div>
+  <div class="theme-toggle" onclick="toggleTheme()">🌙</div>
+</div>
+</header>
+
+<main class="app">
+
+<div class="camera-zone">
+<video id="videoElement" playsinline autoplay muted></video>
+<canvas id="outputCanvas"></canvas>
+
+<div class="start-screen" id="startScreen">
+<h2>Communication Bridge</h2>
+<p>Hold gesture 1 second to speak</p>
+<button id="startBtn">Enable Camera</button>
+</div>
+</div>
+
+<div class="sidebar">
+<div class="section-title">HISTORY</div>
+<div class="history-list" id="historyList"></div>
+
+<div class="section-title">GESTURES</div>
+<div class="gesture-grid" id="gestureGrid"></div>
+
+<div class="controls">
+<button onclick="toggleMute()">Toggle Sound</button>
+<button onclick="clearHistory()">Clear</button>
+</div>
+</div>
+
+</main>
+
+<script>
+const GESTURES=[
+  {id:'help',     emoji:'✋',
+    phrases:{en:'I need help',         bn:'আমার সাহায্য দরকার',        hi:'मुझे मदद चाहिए'}},
+  {id:'stop',     emoji:'✊',
+    phrases:{en:'Please stop',         bn:'অনুগ্রহ করে থামুন',         hi:'कृपया रुकें'}},
+  {id:'water',    emoji:'☝️',
+    phrases:{en:'I need water',        bn:'আমার পানি দরকার',           hi:'मुझे पानी चाहिए'}},
+  {id:'yes',      emoji:'👍',
+    phrases:{en:'Yes',                 bn:'হ্যাঁ',                     hi:'हाँ'}},
+  {id:'no',       emoji:'👎',
+    phrases:{en:'No',                  bn:'না',                        hi:'नहीं'}},
+  {id:'love',     emoji:'🤟',
+    phrases:{en:'I love you',          bn:'আমি তোমাকে ভালোবাসি',      hi:'मैं तुमसे प्यार करता हूँ'}},
+  {id:'hate',     emoji:'✌️',
+    phrases:{en:'I hate you',          bn:'আমি তোমাকে ঘৃণা করি',      hi:'मैं तुमसे नफरत करता हूँ'}},
+  {id:'ok',       emoji:'👌',
+    phrases:{en:'Okay',                bn:'ঠিক আছে',                   hi:'ठीक है'}},
+  {id:'washroom', emoji:'🚽',
+    phrases:{en:'I need the washroom', bn:'আমার বাথরুম দরকার',         hi:'मुझे शौचालय जाना है'}},
+];
+
+let currentLang='en';
+
+// Language switcher
+document.getElementById('langSwitcher').addEventListener('click',e=>{
+  if(!e.target.classList.contains('lang-btn'))return;
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+  currentLang=e.target.dataset.lang;
+});
+
+const grid=document.getElementById('gestureGrid');
+GESTURES.forEach(g=>{
+const d=document.createElement('div');
+d.className='gesture-tile';
+d.innerHTML=`${g.emoji}<br><b>${g.id.toUpperCase()}</b>`;
+grid.appendChild(d);
+});
+
+let muted=false;
+let historyItems=[];
+let lastGesture=null;
+let stabilityStart=0;
+const STABILITY_TIME=1000;
+const COOLDOWN=2000;
+let inCooldown=false;
+
+function toggleTheme(){
+document.body.classList.toggle("light");
+const toggle=document.querySelector(".theme-toggle");
+toggle.textContent=document.body.classList.contains("light")?"☀️":"🌙";
+}
+
+function speak(text){
+if(muted)return;
+window.speechSynthesis.cancel();
+const utter=new SpeechSynthesisUtterance(text);
+const langMap={en:'en-US',bn:'bn-BD',hi:'hi-IN'};
+utter.lang=langMap[currentLang]||'en-US';
+speechSynthesis.speak(utter);
+}
+
+function toggleMute(){muted=!muted;}
+function clearHistory(){historyItems=[];renderHistory();}
+
+function renderHistory(){
+const list=document.getElementById('historyList');
+list.innerHTML=historyItems.map(h=>`<div>${h}</div>`).join('');
+}
+
+function classify(lm){
+const indexUp=lm[8].y<lm[6].y;
+const middleUp=lm[12].y<lm[10].y;
+const ringUp=lm[16].y<lm[14].y;
+const pinkyUp=lm[20].y<lm[18].y;
+const thumbTip=lm[4];
+const thumbIP=lm[3];
+const wrist=lm[0];
+
+const fingersClosed=!indexUp&&!middleUp&&!ringUp&&!pinkyUp;
+const thumbUp=thumbTip.y<thumbIP.y&&thumbTip.y<wrist.y-0.05;
+const thumbDown=thumbTip.y>thumbIP.y&&thumbTip.y>wrist.y+0.05;
+
+if(indexUp&&middleUp&&ringUp&&pinkyUp)return'help';
+if(fingersClosed&&!thumbUp&&!thumbDown)return'stop';
+if(indexUp&&!middleUp&&!ringUp&&!pinkyUp)return'water';
+if(fingersClosed&&thumbUp)return'yes';
+if(fingersClosed&&thumbDown)return'no';
+if(indexUp&&!middleUp&&!ringUp&&pinkyUp&&thumbTip.y<wrist.y)return'love';
+if(indexUp&&middleUp&&!ringUp&&!pinkyUp)return'hate';
+const distance=Math.hypot(lm[8].x-lm[4].x,lm[8].y-lm[4].y);
+if(distance<0.05&&middleUp&&ringUp&&pinkyUp)return'ok';
+if(!indexUp&&!middleUp&&!ringUp&&pinkyUp)return'washroom';
+return null;
+}
+
+function startCamera(){
+const video=document.getElementById('videoElement');
+const canvas=document.getElementById('outputCanvas');
+const ctx=canvas.getContext('2d');
+const status=document.getElementById('statusText');
+
+const hands=new Hands({
+locateFile:file=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${file}`
+});
+
+hands.setOptions({
+maxNumHands:1,
+modelComplexity:1,
+minDetectionConfidence:0.7,
+minTrackingConfidence:0.5
+});
+
+hands.onResults(results=>{
+canvas.width=video.videoWidth;
+canvas.height=video.videoHeight;
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+if(results.multiHandLandmarks.length>0){
+const lm=results.multiHandLandmarks[0];
+drawConnectors(ctx,lm,HAND_CONNECTIONS);
+drawLandmarks(ctx,lm);
+
+const detected=classify(lm);
+
+if(detected&&!inCooldown){
+if(lastGesture!==detected){
+lastGesture=detected;
+stabilityStart=Date.now();
+}else{
+if(Date.now()-stabilityStart>STABILITY_TIME){
+const gesture=GESTURES.find(g=>g.id===detected);
+const phrase=gesture.phrases[currentLang];
+speak(phrase);
+status.innerText=gesture.id.toUpperCase();
+
+historyItems.unshift(gesture.emoji+' '+phrase);
+if(historyItems.length>6)historyItems.pop();
+renderHistory();
+
+inCooldown=true;
+setTimeout(()=>inCooldown=false,COOLDOWN);
+lastGesture=null;
+}
+}
+}
+}else{
+status.innerText='READY';
+lastGesture=null;
+}
+});
+
+const camera=new Camera(video,{
+onFrame:async()=>{await hands.send({image:video});},
+width:1280,
+height:720
+});
+
+camera.start();
+document.getElementById('startScreen').style.display='none';
+}
+
+document.getElementById('startBtn').onclick=startCamera;
+</script>
+
+</body>
+</html>
